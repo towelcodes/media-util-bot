@@ -21,7 +21,9 @@ impl EventHandler for Handler {
             CreateCommand::new("ping").description("ping pong")
                 .integration_types(vec![InstallationContext::User])
                 .contexts(vec![InteractionContext::PrivateChannel, InteractionContext::Guild, InteractionContext::BotDm]),
-            CreateCommand::new("cake").description("i will bake you a cake !!!!"),
+            CreateCommand::new("cake").description("i will bake you a cake !!!!")
+                .integration_types(vec![InstallationContext::User])
+                .contexts(vec![InteractionContext::PrivateChannel, InteractionContext::Guild, InteractionContext::BotDm]),
             CreateCommand::new("crush").description("crushes the bit depth of an uploaded image or audio")
                 .add_option(CreateCommandOption::new(CommandOptionType::Attachment, "file", "the file you want to crush").required(true))
                 .add_option(CreateCommandOption::new(CommandOptionType::Integer, "percentage", "the percentage of the bit depth to crush").required(false))
@@ -54,7 +56,7 @@ impl EventHandler for Handler {
                         error!("error responding: {why}");
                         return;
                     }
-                    
+
                     debug!("filetype is {:?}", attachment.content_type);
                     let file = attachment.download().await;
                     if let Err(why) = file {
@@ -95,7 +97,7 @@ impl EventHandler for Handler {
     }
 }
 
-#[dotenvy::load]
+#[dotenvy::load(path = "./.env", required = false)]
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()

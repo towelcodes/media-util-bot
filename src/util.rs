@@ -5,7 +5,7 @@ use image::codecs::png::PngEncoder;
 use tracing::log::debug;
 
 pub fn crush(bytes: Vec<u8>, percentage: i64) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>>{
-    let depth = f32::floor(((percentage as f32 / 100.0) * 255.0)) as u16;
+    let depth = f32::floor((percentage as f32 / 100.0) * 255.0) as u16;
     debug!("percentage: {percentage}");
     debug!("bits: {depth}");
     let data = Cursor::new(bytes);
