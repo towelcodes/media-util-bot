@@ -26,7 +26,6 @@ impl EventHandler for Handler {
                 .contexts(vec![InteractionContext::PrivateChannel, InteractionContext::Guild, InteractionContext::BotDm]),
             CreateCommand::new("crush").description("crushes the bit depth of an uploaded image or audio")
                 .add_option(CreateCommandOption::new(CommandOptionType::Attachment, "file", "the file you want to crush").required(true))
-                .add_option(CreateCommandOption::new(CommandOptionType::Integer, "percentage", "the percentage of the bit depth to crush").required(false))
                 .integration_types(vec![InstallationContext::User])
                 .contexts(vec![InteractionContext::PrivateChannel, InteractionContext::Guild, InteractionContext::BotDm]),
             CreateCommand::new("compress").description("applies jpeg compression at your specified level")
@@ -68,7 +67,7 @@ impl EventHandler for Handler {
 
                     let file = file.unwrap();
                     let processed = match name {
-                        "crush" => util::crush(file, command.data.options.get(1).map_or_else(|| 10, |o| o.value.as_i64().unwrap())),
+                        "crush" => util::crush(file, 1),
                         _ => util::compress(file, command.data.options.get(1).map_or_else(|| 50, |o| o.value.as_i64().unwrap() as u8)),
                     };
                     if let Err(why) = processed {
