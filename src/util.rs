@@ -1,5 +1,5 @@
 use std::io::Cursor;
-use image::{DynamicImage, ImageReader};
+use image::{DynamicImage, ImageReader, Pixel};
 use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::PngEncoder;
 use tracing::log::debug;
@@ -10,12 +10,11 @@ pub fn crush(bytes: Vec<u8>, depth: u8) -> Result<(Vec<u8>, i64, &'static str), 
     let img = ImageReader::new(data).with_guessed_format()?.decode()?;
     let mut rgba = img.to_rgba8();
 
-    for pixel in rgba.pixels_mut() {
-        for i in 0..3 { // iterate through channels
-            let chan = pixel[i];
-            pixel[i] = (chan >> (8 - depth)) * (255 / (2u16.pow(depth as u32) - 1) as u8)
-        }
-    }
+    rgba.pixels_mut().for_each(|p| {
+        p.apply(|ch| {
+            (ch >> (8 - depth)) * (255 / (2u16.pow(depth as u32) - 1) as u8)
+        });
+    });
 
     let img = DynamicImage::from(rgba);
     let mut buf: Vec<u8> = Vec::new();
