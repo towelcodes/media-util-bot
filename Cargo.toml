@@ -11,3 +11,4 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 dotenvy = {  git = "https://github.com/allan2/dotenvy", features = [ "macros" ] }
 image = "0.25.5"
 num = "0.4.3"
+chrono = "0.4.39"

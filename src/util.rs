@@ -4,7 +4,7 @@ use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::PngEncoder;
 use tracing::log::debug;
 
-pub fn crush(bytes: Vec<u8>, depth: u8) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>>{
+pub fn crush(bytes: Vec<u8>, depth: u8) -> Result<(Vec<u8>, i64, &'static str), Box<dyn std::error::Error + Send + Sync>> {
     debug!("bits: {depth}");
     let data = Cursor::new(bytes);
     let img = ImageReader::new(data).with_guessed_format()?.decode()?;
@@ -19,19 +19,18 @@ pub fn crush(bytes: Vec<u8>, depth: u8) -> Result<Vec<u8>, Box<dyn std::error::E
 
     let img = DynamicImage::from(rgba);
     let mut buf: Vec<u8> = Vec::new();
-    let cursor = Cursor::new(&mut buf);
-    let encoder = PngEncoder::new(cursor);
+    let encoder = PngEncoder::new(&mut buf);
     img.write_with_encoder(encoder)?;
-    Ok(buf.to_owned())
+    Ok((buf, depth as i64, " bits"))
 }
 
-pub fn compress(bytes: Vec<u8>, quality: u8) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> { 
+pub fn compress(bytes: Vec<u8>, quality: u8) -> Result<(Vec<u8>, i64, &'static str), Box<dyn std::error::Error + Send + Sync>> {
     let qual = f32::floor(((quality as f32 / 100.0) * 50.0)) as u8;
     let mut buf: Vec<u8> = Vec::new();
     let data = Cursor::new(bytes);
-    let img = ImageReader::new(data).with_guessed_format()?.decode()?;
+    let img = ImageReader::new(data).with_guessed_format()?.decode()?.to_rgb8();
     
     let encoder = JpegEncoder::new_with_quality(&mut buf, qual); 
     img.write_with_encoder(encoder)?;
-    Ok(buf)
+    Ok((buf, qual as i64, " quality"))
 }

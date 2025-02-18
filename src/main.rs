@@ -6,9 +6,10 @@ use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 use serenity::prelude::*;
 use serenity::{async_trait, Client};
 use serenity::all::{CommandOptionType, CreateCommand, InstallationContext, Interaction, InteractionContext};
-use serenity::builder::{CreateAttachment, CreateCommandOption, CreateInteractionResponse, CreateInteractionResponseFollowup, CreateInteractionResponseMessage};
+use serenity::builder::{CreateAttachment, CreateCommandOption, CreateEmbed, CreateEmbedFooter, CreateInteractionResponse, CreateInteractionResponseFollowup, CreateInteractionResponseMessage, EditInteractionResponse};
 use serenity::model::application::{Command, ResolvedOption, ResolvedValue};
 use serenity::model::gateway::Ready;
+use serenity::model::Timestamp;
 use tracing_subscriber::layer::SubscriberExt;
 
 struct Handler;
@@ -50,7 +51,8 @@ impl EventHandler for Handler {
                     value: ResolvedValue::Attachment(attachment), ..
                 }) = command.data.options().get(0) {
                     debug!("performing operation on {attachment:#?}");
-                    let data = CreateInteractionResponseMessage::new().content("image processing...");
+                    // let data = CreateInteractionResponseMessage::new().content("image processing...");
+                    let data = CreateInteractionResponseMessage::new().embed(CreateEmbed::new().title("Processing your image...")).ephemeral(true);
                     let builder = CreateInteractionResponse::Message(data);
                     if let Err(why) = command.create_response(&ctx.http, builder).await {
                         error!("error responding: {why}");
@@ -61,36 +63,47 @@ impl EventHandler for Handler {
                     let file = attachment.download().await;
                     if let Err(why) = file {
                         error!("error downloading file: {why}");
-                        let builder = CreateInteractionResponseFollowup::new().content("failed to obtain file");
-                        let _ = command.create_followup(&ctx.http, builder).await;
+                        let data = CreateInteractionResponseFollowup::new().embed(
+                            CreateEmbed::new().title("Error").description("Failed to obtain file")).ephemeral(true);
+                        let _ = command.create_followup(&ctx.http, data).await;
+                        let _ = command.delete_response(&ctx.http).await;
                         return;
                     }
 
                     let file = file.unwrap();
+                    let arg =  command.data.options.get(1).map_or_else(|| None, |o| Some(o.value.as_i64().unwrap()));
                     let processed = match name {
-                        "crush" => util::crush(file, command.data.options.get(1).map_or_else(|| 2, |o| 
-                            num::clamp(o.value.as_i64().unwrap(), 1, 8) as u8)),
-                        _ => util::compress(file, command.data.options.get(1).map_or_else(|| 50, |o| 
-                            num::clamp(o.value.as_i64().unwrap(), 1, 100) as u8)),
+                        "crush" => util::crush(file, num::clamp(arg.unwrap_or(2), 1, 8) as u8),
+                        _ => util::compress(file, num::clamp(arg.unwrap_or(50), 1, 100) as u8),
                     };
                     if let Err(why) = processed {
                         error!("error processing file: {why}");
-                        let builder = CreateInteractionResponseFollowup::new().content("failed to process file");
+                        let builder = CreateInteractionResponseFollowup::new().embed(
+                            CreateEmbed::new().title("Error").description("Failed to process file").footer(
+                                CreateEmbedFooter::new(format!("{why}")))).ephemeral(true);
                         let _ = command.create_followup(&ctx.http, builder).await;
+                        let _ = command.delete_response(&ctx.http).await;
                         return;
                     }
 
+                    let (image, measure, unit) = processed.unwrap();
+
                     let builder = CreateInteractionResponseFollowup::new()
-                        .add_file(CreateAttachment::bytes(processed.unwrap(), format!("output.{}", match name { "crush" => "png", _ => "jpg" })))
-                        .content("here's your stupid image back");
+                        .add_file(CreateAttachment::bytes(image, format!("output.{}", match name { "crush" => "png", _ => "jpg" })))
+                        .content(format!("-# applied `{}` ({}{}) | sent by {}", name, measure, unit, command.user.mention()));
                     if let Err(why) = command.create_followup(&ctx.http, builder).await {
                         error!("error responding: {why}");
                     }
+                    let _ = command.delete_response(&ctx.http).await;
                 }
                 return;
             }
 
-            let data = CreateInteractionResponseMessage::new().content("hey loser");
+            let data = CreateInteractionResponseMessage::new().embed(
+                CreateEmbed::new().title("hey loser").description("i'm still alive unfortunately").footer(
+                    CreateEmbedFooter::new(format!("{}ms", chrono::Utc::now().timestamp_millis() - command.id.created_at().unix_timestamp() * 1000))
+                )
+            );
             let builder = CreateInteractionResponse::Message(data);
             if let Err(why) = command.create_response(&ctx.http, builder).await {
                 error!("error responding: {why}");
