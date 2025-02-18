@@ -4,9 +4,7 @@ use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::PngEncoder;
 use tracing::log::debug;
 
-pub fn crush(bytes: Vec<u8>, percentage: i64) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>>{
-    let depth = f32::floor((percentage as f32 / 100.0) * 255.0) as u8;
-    debug!("percentage: {percentage}");
+pub fn crush(bytes: Vec<u8>, depth: u8) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>>{
     debug!("bits: {depth}");
     let data = Cursor::new(bytes);
     let img = ImageReader::new(data).with_guessed_format()?.decode()?;
@@ -15,7 +13,7 @@ pub fn crush(bytes: Vec<u8>, percentage: i64) -> Result<Vec<u8>, Box<dyn std::er
     for pixel in rgba.pixels_mut() {
         for i in 0..3 { // iterate through channels
             let chan = pixel[i];
-            pixel[i] = ((chan * depth / 255) * (255 / depth)) as u8;
+            pixel[i] = (chan >> (8 - depth)) * (255 / (2u16.pow(depth as u32) - 1) as u8)
         }
     }
 
