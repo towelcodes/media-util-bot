@@ -62,9 +62,10 @@ impl EventHandler for Handler {
             
             if let Err(why) = command_result {
                 error!("error running command: {why}");
-                let embed = CreateEmbed::new().title("Something went wrong").description("{why}");
+                let embed = CreateEmbed::new().title("Something went wrong").description(format!("{why}")).colour(0xe78284);
                 let builder = CreateInteractionResponseFollowup::new().embed(embed).ephemeral(true);
                 let _ = command.create_followup(&ctx.http, builder).await;
+                let _ = command.delete_response(&ctx.http).await;
             }
         }
     }
