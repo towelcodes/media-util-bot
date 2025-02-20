@@ -1,6 +1,9 @@
+mod process;
+mod commands;
 mod util;
 
 use std::env;
+use std::sync::Arc;
 use tracing::{debug, error, info, trace};
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 use serenity::prelude::*;
@@ -11,6 +14,7 @@ use serenity::model::application::{Command, ResolvedOption, ResolvedValue};
 use serenity::model::gateway::Ready;
 use serenity::model::Timestamp;
 use tracing_subscriber::layer::SubscriberExt;
+use crate::process::mask;
 
 struct Handler;
 #[async_trait]
@@ -35,6 +39,11 @@ impl EventHandler for Handler {
                 .add_option(CreateCommandOption::new(CommandOptionType::Integer, "quality", "the quality of the compression (100 best, 0 worst)").required(false))
                 .integration_types(vec![InstallationContext::User])
                 .contexts(vec![InteractionContext::PrivateChannel, InteractionContext::Guild, InteractionContext::BotDm]),
+            CreateCommand::new("mask").description("hides some parts of an image based on a luma mask")
+                .add_option(CreateCommandOption::new(CommandOptionType::Attachment, "image", "the image you want to mask").required(true))
+                .add_option(CreateCommandOption::new(CommandOptionType::Attachment, "mask", "the mask image").required(true))
+                .integration_types(vec![InstallationContext::User])
+                .contexts(vec![InteractionContext::PrivateChannel, InteractionContext::Guild, InteractionContext::BotDm]),
         ];
         let _ = Command::set_global_commands(&ctx.http, commands).await;
 
@@ -42,71 +51,20 @@ impl EventHandler for Handler {
     }
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::Command(command) = interaction {
-            debug!("received command: {command:#?}");
-
             let name = command.data.name.as_str();
-            if name == "crush" || name == "compress" {
-                // let file = command.data.options.get(0).unwrap().value.as_ref().unwrap().as_str().unwrap();
-                if let Some(ResolvedOption {
-                    value: ResolvedValue::Attachment(attachment), ..
-                }) = command.data.options().get(0) {
-                    debug!("performing operation on {attachment:#?}");
-                    // let data = CreateInteractionResponseMessage::new().content("image processing...");
-                    let data = CreateInteractionResponseMessage::new().embed(CreateEmbed::new().title("Processing your image...")).ephemeral(true);
-                    let builder = CreateInteractionResponse::Message(data);
-                    if let Err(why) = command.create_response(&ctx.http, builder).await {
-                        error!("error responding: {why}");
-                        return;
-                    }
-
-                    debug!("filetype is {:?}", attachment.content_type);
-                    let file = attachment.download().await;
-                    if let Err(why) = file {
-                        error!("error downloading file: {why}");
-                        let data = CreateInteractionResponseFollowup::new().embed(
-                            CreateEmbed::new().title("Error").description("Failed to obtain file")).ephemeral(true);
-                        let _ = command.create_followup(&ctx.http, data).await;
-                        let _ = command.delete_response(&ctx.http).await;
-                        return;
-                    }
-
-                    let file = file.unwrap();
-                    let arg =  command.data.options.get(1).map_or_else(|| None, |o| Some(o.value.as_i64().unwrap()));
-                    let processed = match name {
-                        "crush" => util::crush(file, num::clamp(arg.unwrap_or(2), 1, 8) as u8),
-                        _ => util::compress(file, num::clamp(arg.unwrap_or(50), 1, 100) as u8),
-                    };
-                    if let Err(why) = processed {
-                        error!("error processing file: {why}");
-                        let builder = CreateInteractionResponseFollowup::new().embed(
-                            CreateEmbed::new().title("Error").description("Failed to process file").footer(
-                                CreateEmbedFooter::new(format!("{why}")))).ephemeral(true);
-                        let _ = command.create_followup(&ctx.http, builder).await;
-                        let _ = command.delete_response(&ctx.http).await;
-                        return;
-                    }
-
-                    let (image, measure, unit) = processed.unwrap();
-
-                    let builder = CreateInteractionResponseFollowup::new()
-                        .add_file(CreateAttachment::bytes(image, format!("output.{}", match name { "crush" => "png", _ => "jpg" })))
-                        .content(format!("-# applied `{}` ({}{}) | sent by {}", name, measure, unit, command.user.mention()));
-                    if let Err(why) = command.create_followup(&ctx.http, builder).await {
-                        error!("error responding: {why}");
-                    }
-                    let _ = command.delete_response(&ctx.http).await;
-                }
-                return;
-            }
-
-            let data = CreateInteractionResponseMessage::new().embed(
-                CreateEmbed::new().title("hey loser").description("i'm still alive unfortunately").footer(
-                    CreateEmbedFooter::new(format!("{}ms", chrono::Utc::now().timestamp_millis() - command.id.created_at().unix_timestamp() * 1000))
-                )
-            );
-            let builder = CreateInteractionResponse::Message(data);
-            if let Err(why) = command.create_response(&ctx.http, builder).await {
-                error!("error responding: {why}");
+            let command_result = match name {
+                "crush" => commands::crush(Arc::clone(&ctx.http), &command).await,
+                "compress" => commands::compress(Arc::clone(&ctx.http), &command).await,
+                "mask" => commands::mask(Arc::clone(&ctx.http), &command).await,
+                "ping" => commands::ping(Arc::clone(&ctx.http), &command).await,
+                _ => Ok(()),
+            };
+            
+            if let Err(why) = command_result {
+                error!("error running command: {why}");
+                let embed = CreateEmbed::new().title("Something went wrong").description("{why}");
+                let builder = CreateInteractionResponseFollowup::new().embed(embed).ephemeral(true);
+                let _ = command.create_followup(&ctx.http, builder).await;
             }
         }
     }

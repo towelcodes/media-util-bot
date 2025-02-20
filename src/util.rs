@@ -1,35 +1,21 @@
-use std::io::Cursor;
-use image::{DynamicImage, ImageReader, Pixel};
-use image::codecs::jpeg::JpegEncoder;
-use image::codecs::png::PngEncoder;
-use tracing::log::debug;
+use serenity::all::{CommandDataOption, CommandInteraction, CreateEmbed, ResolvedOption, ResolvedValue};
+use serenity::builder::{CreateInteractionResponse, CreateInteractionResponseMessage};
+use serenity::http::CacheHttp;
 
-pub fn crush(bytes: Vec<u8>, depth: u8) -> Result<(Vec<u8>, i64, &'static str), Box<dyn std::error::Error + Send + Sync>> {
-    debug!("bits: {depth}");
-    let data = Cursor::new(bytes);
-    let img = ImageReader::new(data).with_guessed_format()?.decode()?;
-    let mut rgba = img.to_rgba8();
-
-    rgba.pixels_mut().for_each(|p| {
-        p.apply(|ch| {
-            (ch >> (8 - depth)) * (255 / (2u16.pow(depth as u32) - 1) as u8)
-        });
-    });
-
-    let img = DynamicImage::from(rgba);
-    let mut buf: Vec<u8> = Vec::new();
-    let encoder = PngEncoder::new(&mut buf);
-    img.write_with_encoder(encoder)?;
-    Ok((buf, depth as i64, " bits"))
+pub async fn mark_processing(cache_http: impl CacheHttp, command: &CommandInteraction) {
+    let builder = CreateInteractionResponseMessage::new().embed(
+        CreateEmbed::new().title("Processing...").description("I'm processing your image...").colour(0xe5c890)).ephemeral(true);
+    let data = CreateInteractionResponse::Message(builder);
+    let _ = command.create_response(&cache_http, data).await;
 }
 
-pub fn compress(bytes: Vec<u8>, quality: u8) -> Result<(Vec<u8>, i64, &'static str), Box<dyn std::error::Error + Send + Sync>> {
-    let qual = f32::floor(((quality as f32 / 100.0) * 50.0)) as u8;
-    let mut buf: Vec<u8> = Vec::new();
-    let data = Cursor::new(bytes);
-    let img = ImageReader::new(data).with_guessed_format()?.decode()?.to_rgb8();
-    
-    let encoder = JpegEncoder::new_with_quality(&mut buf, qual); 
-    img.write_with_encoder(encoder)?;
-    Ok((buf, qual as i64, " quality"))
+pub async fn download_attachment(option: Option<&ResolvedOption<'_>>) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
+    if let Some(ResolvedOption {
+            value: ResolvedValue::Attachment(attachment), ..
+        }) = option {
+        let data = attachment.download().await?;
+        Ok(data)
+    } else {
+        Err("No file provided".into())
+    }
 }
