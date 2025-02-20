@@ -7,11 +7,12 @@
 
 ## Things it can do
 
-| Command | Function |
-| --------|----------|
-| /ping   | ping pong|
-| /crush \<file> [bits] | crush the bit depth of any image |
+| Command | Function                                                  |
+| --------|-----------------------------------------------------------|
+| /ping   | ping pong                                                 |
+| /crush \<file> [bits] | crush the bit depth of any image                          |
 | /compress \<file> [quality] | apply JPEG compression to any image (loses alpha channel) |
+| /mask \<image> \<mask> | applies the luma of the mask to each pixel of the image   |
 
 ## Run it yourself
 > Docker images are published at [teatowel/media-bot](https://hub.docker.com/r/teatowel/media-bot)
