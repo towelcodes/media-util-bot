@@ -47,6 +47,20 @@ pub async fn mask(cache_http: Arc<Http>, command: &CommandInteraction) -> Comman
     Ok(())
 }
 
+static BUBBLE_MASK: &'static [u8] = include_bytes!("assets/speechbubble.png");
+pub async fn bubble(cache_http: Arc<Http>, command: &CommandInteraction) -> CommandResult {
+    let file = download_attachment(command.data.options().get(0)).await?;
+    let mask = Vec::from(BUBBLE_MASK);
+    mark_processing(&cache_http, &command).await;
+    let (image, process) = process::mask(file, mask)?;
+    let builder = CreateInteractionResponseFollowup::new()
+        .add_file(CreateAttachment::bytes(image, "output.png"))
+        .content(format!("-# applied `bubble` ({}) | sent by {}", process, command.user.mention()));
+    command.create_followup(&cache_http, builder).await?;
+    let _ = command.delete_response(&cache_http).await;
+    Ok(())
+}
+
 pub async fn ping(cache_http: Arc<Http>, command: &CommandInteraction) -> CommandResult {
     let data = CreateInteractionResponseMessage::new().embed(
         CreateEmbed::new().title("hey loser").description("i'm still alive unfortunately").colour(0xa6d189).footer(

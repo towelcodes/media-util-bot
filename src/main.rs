@@ -44,6 +44,10 @@ impl EventHandler for Handler {
                 .add_option(CreateCommandOption::new(CommandOptionType::Attachment, "mask", "the mask image").required(true))
                 .integration_types(vec![InstallationContext::User])
                 .contexts(vec![InteractionContext::PrivateChannel, InteractionContext::Guild, InteractionContext::BotDm]),
+            CreateCommand::new("bubble").description("cut a speech bubble into the image")
+                .add_option(CreateCommandOption::new(CommandOptionType::Attachment, "image", "the image you want to modify").required(true))
+                .integration_types(vec![InstallationContext::User])
+                .contexts(vec![InteractionContext::PrivateChannel, InteractionContext::Guild, InteractionContext::BotDm]),
         ];
         let _ = Command::set_global_commands(&ctx.http, commands).await;
 
@@ -56,6 +60,7 @@ impl EventHandler for Handler {
                 "crush" => commands::crush(Arc::clone(&ctx.http), &command).await,
                 "compress" => commands::compress(Arc::clone(&ctx.http), &command).await,
                 "mask" => commands::mask(Arc::clone(&ctx.http), &command).await,
+                "bubble" => commands::bubble(Arc::clone(&ctx.http), &command).await,
                 "ping" => commands::ping(Arc::clone(&ctx.http), &command).await,
                 _ => Ok(()),
             };
