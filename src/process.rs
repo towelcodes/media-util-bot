@@ -49,7 +49,9 @@ pub fn mask(bytes: Vec<u8>, mask: Vec<u8>) -> ImageResult {
     img.enumerate_pixels_mut().for_each(|(x, y, p)| {
         let alpha = &mut p.channels_mut()[3];
         let mask = scaled_mask.get_pixel(x, y);
-        *alpha = mask[0];
+        if *alpha > mask[0] {
+            *alpha = mask[0];
+        }
     });
     
     let mut buf: Vec<u8> = vec![];
