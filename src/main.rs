@@ -69,6 +69,7 @@ impl EventHandler for Handler {
                 _ => Ok(()),
             };
 
+            info!("command: {:?}", command.data);
             if let Err(why) = command_result {
                 error!("error running command: {why}");
                 let embed = CreateEmbed::new().title("Something went wrong").description(format!("{why}")).colour(0xe78284);
