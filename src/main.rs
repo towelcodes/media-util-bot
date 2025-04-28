@@ -14,7 +14,10 @@ use serenity::model::application::{Command, ResolvedOption, ResolvedValue};
 use serenity::model::gateway::Ready;
 use serenity::model::Timestamp;
 use tracing_subscriber::layer::SubscriberExt;
+use include_dir::{include_dir, Dir};
 use crate::process::mask;
+
+static ASSETS: Dir = include_dir!("src/assets");
 
 struct Handler;
 #[async_trait]
@@ -41,7 +44,11 @@ impl EventHandler for Handler {
                 .contexts(vec![InteractionContext::PrivateChannel, InteractionContext::Guild, InteractionContext::BotDm]),
             CreateCommand::new("mask").description("hides some parts of an image based on a luma mask")
                 .add_option(CreateCommandOption::new(CommandOptionType::Attachment, "image", "the image you want to mask").required(true))
-                .add_option(CreateCommandOption::new(CommandOptionType::Attachment, "mask", "the mask image").required(true))
+                // .add_option(CreateCommandOption::new(CommandOptionType::Attachment, "mask", "the mask image").required(true))
+                .add_option(CreateCommandOption::new(CommandOptionType::SubCommandGroup, "custom", "use a custom mask image")
+                    .add_sub_option(CreateCommandOption::new(CommandOptionType::Attachment, "mask", "the mask image where black = transparent").required(true)))
+                .add_option(CreateCommandOption::new(CommandOptionType::SubCommandGroup, "builtin", "use a builtin mask image")
+                    .add_sub_option(CreateCommandOption::new(CommandOptionType::SubCommandGroup, "speech_bubble", "use a speech bubble mask")))
                 .integration_types(vec![InstallationContext::User])
                 .contexts(vec![InteractionContext::PrivateChannel, InteractionContext::Guild, InteractionContext::BotDm]),
         ];
@@ -55,11 +62,13 @@ impl EventHandler for Handler {
             let command_result = match name {
                 "crush" => commands::crush(Arc::clone(&ctx.http), &command).await,
                 "compress" => commands::compress(Arc::clone(&ctx.http), &command).await,
-                "mask" => commands::mask(Arc::clone(&ctx.http), &command).await,
+                "mask" => {
+                    commands::mask(Arc::clone(&ctx.http), &command).await
+                },
                 "ping" => commands::ping(Arc::clone(&ctx.http), &command).await,
                 _ => Ok(()),
             };
-            
+
             if let Err(why) = command_result {
                 error!("error running command: {why}");
                 let embed = CreateEmbed::new().title("Something went wrong").description(format!("{why}")).colour(0xe78284);
@@ -70,6 +79,7 @@ impl EventHandler for Handler {
         }
     }
 }
+
 
 #[dotenvy::load(path = "./.env", required = false)]
 #[tokio::main]

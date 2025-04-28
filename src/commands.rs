@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use include_dir::Dir;
 use serenity::all::{CommandInteraction, CreateAttachment, CreateEmbed, CreateEmbedFooter, CreateInteractionResponse, CreateInteractionResponseFollowup, Mentionable, ResolvedOption, ResolvedValue};
 use serenity::builder::CreateInteractionResponseMessage;
 use serenity::http::Http;
@@ -37,6 +38,18 @@ pub async fn compress(cache_http: Arc<Http>, command: &CommandInteraction) -> Co
 pub async fn mask(cache_http: Arc<Http>, command: &CommandInteraction) -> CommandResult {
     let file = download_attachment(command.data.options().get(0)).await?;
     let mask = download_attachment(command.data.options().get(1)).await?;
+    mark_processing(&cache_http, &command).await;
+    let (image, process) = process::mask(file, mask)?;
+    let builder = CreateInteractionResponseFollowup::new()
+        .add_file(CreateAttachment::bytes(image, "output.png"))
+        .content(format!("-# applied `mask` ({}) | sent by {}", process, command.user.mention()));
+    command.create_followup(&cache_http, builder).await?;
+    let _ = command.delete_response(&cache_http).await;
+    Ok(())
+}
+
+pub async fn mask_derived(cache_http: Arc<Http>, command: &CommandInteraction, mask: Vec<u8>, name: &str) -> CommandResult {
+    let file = download_attachment(command.data.options().get(0)).await?;
     mark_processing(&cache_http, &command).await;
     let (image, process) = process::mask(file, mask)?;
     let builder = CreateInteractionResponseFollowup::new()
