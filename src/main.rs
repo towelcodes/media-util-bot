@@ -1,4 +1,5 @@
 mod commands;
+mod interact;
 mod process;
 mod util;
 
@@ -40,14 +41,7 @@ impl EventHandler for Handler {
                     InteractionContext::Guild,
                     InteractionContext::BotDm,
                 ]),
-            CreateCommand::new("interact")
-                .description("harrass your friends")
-                .integration_types(vec![InstallationContext::User, InstallationContext::Guild])
-                .contexts(vec![
-                    InteractionContext::PrivateChannel,
-                    InteractionContext::Guild,
-                    InteractionContext::BotDm,
-                ]),
+            interact::register(),
             CreateCommand::new("cake")
                 .description("i will bake you a cake !!!!")
                 .integration_types(vec![InstallationContext::User])
@@ -188,7 +182,7 @@ async fn main() {
         .with(fmt::layer())
         .with(
             EnvFilter::builder()
-                .parse(env::var("RUST_LOG").unwrap_or("stupid_media_bot=info".into()))
+                .parse(env::var("RUST_LOG").unwrap_or("media_bot=info".into()))
                 .unwrap(),
         )
         .init();
