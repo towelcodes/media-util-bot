@@ -3,27 +3,24 @@ mod interact;
 mod process;
 mod util;
 
-use crate::process::mask;
 use include_dir::{include_dir, Dir};
 use serenity::all::{
-    CommandOptionType, CreateCommand, InstallationContext, Interaction, InteractionContext,
+    ClientBuilder, CommandOptionType, CreateCommand, GuildId, Http, HttpBuilder,
+    InstallationContext, Interaction, InteractionContext,
 };
-use serenity::builder::{
-    CreateAttachment, CreateCommandOption, CreateEmbed, CreateEmbedFooter,
-    CreateInteractionResponse, CreateInteractionResponseFollowup, CreateInteractionResponseMessage,
-    EditInteractionResponse,
-};
-use serenity::model::application::{Command, ResolvedOption, ResolvedValue};
+use serenity::builder::{CreateCommandOption, CreateEmbed, CreateInteractionResponseFollowup};
+use serenity::model::application::Command;
 use serenity::model::gateway::Ready;
-use serenity::model::Timestamp;
+
 use serenity::prelude::*;
 use serenity::{async_trait, Client};
 use std::env;
 use std::sync::Arc;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info, warn};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
+#[allow(dead_code)]
 static ASSETS: Dir = include_dir!("src/assets");
 
 struct Handler;
@@ -102,18 +99,17 @@ impl EventHandler for Handler {
                 .description("hides some parts of an image based on a luma mask")
                 .add_option(
                     CreateCommandOption::new(
-                        CommandOptionType::Attachment,
-                        "image",
-                        "the image you want to mask",
-                    )
-                    .required(true),
-                )
-                // .add_option(CreateCommandOption::new(CommandOptionType::Attachment, "mask", "the mask image").required(true))
-                .add_option(
-                    CreateCommandOption::new(
-                        CommandOptionType::SubCommandGroup,
+                        CommandOptionType::SubCommand,
                         "custom",
                         "use a custom mask image",
+                    )
+                    .add_sub_option(
+                        CreateCommandOption::new(
+                            CommandOptionType::Attachment,
+                            "image",
+                            "the image you want to mask",
+                        )
+                        .required(true),
                     )
                     .add_sub_option(
                         CreateCommandOption::new(
@@ -126,15 +122,18 @@ impl EventHandler for Handler {
                 )
                 .add_option(
                     CreateCommandOption::new(
-                        CommandOptionType::SubCommandGroup,
-                        "builtin",
-                        "use a builtin mask image",
-                    )
-                    .add_sub_option(CreateCommandOption::new(
-                        CommandOptionType::SubCommandGroup,
+                        CommandOptionType::SubCommand,
                         "speech_bubble",
                         "use a speech bubble mask",
-                    )),
+                    )
+                    .add_sub_option(
+                        CreateCommandOption::new(
+                            CommandOptionType::Attachment,
+                            "image",
+                            "the image you want to ask",
+                        )
+                        .required(true),
+                    ),
                 )
                 .integration_types(vec![InstallationContext::User])
                 .contexts(vec![
@@ -143,10 +142,24 @@ impl EventHandler for Handler {
                     InteractionContext::BotDm,
                 ]),
         ];
-        let _ = Command::set_global_commands(&ctx.http, commands).await;
-
-        debug!("commands registered");
+        // For faster testing, register commands to a specific guild
+        // Replace GUILD_ID with your test server's ID, or set GUILD_ID environment variable
+        if let Ok(guild_id_str) = env::var("GUILD_ID") {
+            if let Ok(guild_id) = guild_id_str.parse::<u64>() {
+                let guild_id = GuildId::new(guild_id);
+                let _ = guild_id.set_commands(&ctx.http, commands.clone()).await;
+                debug!("Guild commands registered for guild {}", guild_id);
+            } else {
+                error!("Invalid GUILD_ID format");
+            }
+        }
+        if let Err(e) = Command::set_global_commands(&ctx.http, commands).await {
+            warn!("Error setting global commands: {:?}", e);
+        } else {
+            debug!("Global commands registered");
+        }
     }
+
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::Command(command) = interaction {
             let name = command.data.name.as_str();
@@ -155,7 +168,12 @@ impl EventHandler for Handler {
                 "compress" => commands::compress(Arc::clone(&ctx.http), &command).await,
                 "mask" => commands::mask(Arc::clone(&ctx.http), &command).await,
                 "ping" => commands::ping(Arc::clone(&ctx.http), &command).await,
-                _ => Ok(()),
+                "cake" => commands::cake(Arc::clone(&ctx.http), &command).await,
+                "interact" => interact::run(Arc::clone(&ctx.http), &command).await,
+                _ => {
+                    error!("Unknown command: {}", name);
+                    Ok(())
+                }
             };
 
             info!("command: {:?}", command.data);
@@ -188,10 +206,13 @@ async fn main() {
         .init();
     let token = env::var("DISCORD_TOKEN").expect("DISCORD_TOKEN must be set");
 
-    let mut client = Client::builder(token, GatewayIntents::empty())
+    let http = HttpBuilder::new(token)
+        .proxy("http://127.0.0.1:8080")
+        .build();
+    let mut client = ClientBuilder::new_with_http(http, GatewayIntents::empty())
         .event_handler(Handler)
         .await
-        .expect("Error creating client");
+        .expect("Client creation failed.");
 
     if let Err(why) = client.start().await {
         error!("client error: {why:?}");
