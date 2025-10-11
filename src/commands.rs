@@ -119,35 +119,3 @@ pub async fn cake(cache_http: Arc<Http>, command: &CommandInteraction) -> Comman
     command.create_response(&cache_http, builder).await?;
     Ok(())
 }
-
-pub async fn interact(cache_http: Arc<Http>, command: &CommandInteraction) -> CommandResult {
-    // Handle the interact command with subcommands
-    if let Some(subcommand) = command.data.options.first() {
-        match subcommand.name.as_str() {
-            "hug" => {
-                let data = CreateInteractionResponseMessage::new().embed(
-                    CreateEmbed::new()
-                        .title("not implemented")
-                        .description("gulp")
-                        .colour(0xf38ba8),
-                );
-                let builder = CreateInteractionResponse::Message(data);
-                command.create_response(&cache_http, builder).await?;
-            }
-            _ => {
-                let data = CreateInteractionResponseMessage::new()
-                    .content("unknown subcommand")
-                    .ephemeral(true);
-                let builder = CreateInteractionResponse::Message(data);
-                command.create_response(&cache_http, builder).await?;
-            }
-        }
-    } else {
-        let data = CreateInteractionResponseMessage::new()
-            .content("Please specify a subcommand!")
-            .ephemeral(true);
-        let builder = CreateInteractionResponse::Message(data);
-        command.create_response(&cache_http, builder).await?;
-    }
-    Ok(())
-}

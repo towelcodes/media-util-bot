@@ -30,30 +30,20 @@ struct NekosBestJson {
 
 pub async fn nekos_best(query: &str) -> Result<ProvidedImage, Box<dyn Error + Send + Sync>> {
     let endpoint = env::var("NEKO_ENDPOINT")?;
-
     let url = format!("{}{}", endpoint, query);
-    debug!("Endpoint: {}", url);
 
     let client = reqwest::Client::builder()
         .user_agent("discordbot")
         .build()?;
-
     let response = client.get(&url).send().await?;
 
-    debug!("Response status: {}", response.status());
-    debug!("Response headers: {:?}", response.headers());
-
     let response_text = response.text().await?;
-    debug!("Raw response body: {}", response_text);
-
     let res: NekosBestJson = serde_json::from_str(&response_text).map_err(|e| {
         Box::new(ImageProviderError(format!(
             "JSON parse error: {}. Raw response: {}",
             e, response_text
         )))
     })?;
-
-    debug!("results: {:?}", res);
 
     Ok(ProvidedImage {
         url: res.results.first().unwrap().url.clone(),

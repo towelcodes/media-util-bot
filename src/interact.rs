@@ -1,11 +1,11 @@
-use std::{env, sync::Arc};
+use std::sync::Arc;
 
 use serenity::all::{
     CommandInteraction, CommandOptionType, CreateCommand, CreateCommandOption, CreateEmbed,
-    CreateInteractionResponse, CreateInteractionResponseFollowup, CreateInteractionResponseMessage,
-    Http, InstallationContext, InteractionContext,
+    CreateEmbedFooter, CreateInteractionResponse, CreateInteractionResponseFollowup,
+    CreateInteractionResponseMessage, Http, InstallationContext, InteractionContext,
 };
-use tracing::{debug, warn};
+use tracing::warn;
 
 use crate::image_provider::nekos_best;
 
@@ -22,6 +22,7 @@ pub fn register() -> CreateCommand {
         ])
         .add_option(
             CreateCommandOption::new(CommandOptionType::String, "action", "action to perform")
+                .required(true)
                 .add_string_choice("slap", "slap")
                 .add_string_choice("hug", "hug")
                 .add_string_choice("dance", "dance")
@@ -36,18 +37,23 @@ pub fn register() -> CreateCommand {
 }
 
 pub async fn run(cache_http: Arc<Http>, command: &CommandInteraction) -> CommandResult {
-    // command
-    //     .create_response(&cache_http, CreateInteractionResponse::Acknowledge)
-    //     .await?;
-
-    let options = command.data.options();
     let action = command.data.options.get(0).unwrap().value.as_str().unwrap();
-    debug!("{:?}", action);
+    let target = {
+        if let Some(t) = command.data.options.get(1) {
+            let user = cache_http
+                .get_user(t.value.as_user_id().unwrap())
+                .await
+                .unwrap();
+            user.display_name().to_owned()
+        } else {
+            "".to_owned()
+        }
+    };
 
-    let url = nekos_best(action).await;
+    let image = nekos_best(action).await;
 
-    if url.is_err() {
-        let err = url.unwrap_err();
+    if image.is_err() {
+        let err = image.unwrap_err();
         warn!("{:?}", err);
         command
             .create_response(
@@ -65,7 +71,18 @@ pub async fn run(cache_http: Arc<Http>, command: &CommandInteraction) -> Command
         .create_response(
             &cache_http,
             CreateInteractionResponse::Message(
-                CreateInteractionResponseMessage::new().embed(CreateEmbed::new().title("title")),
+                CreateInteractionResponseMessage::new().embed(
+                    CreateEmbed::new()
+                        .title(format!(
+                            "{} {}s {}",
+                            command.user.display_name(),
+                            action,
+                            target
+                        ))
+                        .image(image.unwrap().url)
+                        .footer(CreateEmbedFooter::new("powered by nekos.best"))
+                        .colour(0x7cfa78),
+                ),
             ),
         )
         .await?;
