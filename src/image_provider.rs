@@ -29,7 +29,7 @@ struct NekosBestJson {
 }
 
 pub async fn nekos_best(query: &str) -> Result<ProvidedImage, Box<dyn Error + Send + Sync>> {
-    let endpoint = env::var("NEKO_ENDPOINT")?;
+    let endpoint = env::var("NEKO_ENDPOINT").unwrap_or("https://nekos.best/api/v2/".to_string());
     let url = format!("{}{}", endpoint, query);
 
     let client = reqwest::Client::builder()

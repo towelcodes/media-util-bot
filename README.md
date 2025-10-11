@@ -13,6 +13,7 @@
 | /crush \<file> [bits] | crush the bit depth of any image                          |
 | /compress \<file> [quality] | apply JPEG compression to any image (loses alpha channel) |
 | /mask \<image> \<mask> | applies the luma of the mask to each pixel of the image   |
+| /interact <action> [user] | finds a gif for an interaction from nekos.best |
 
 ## Run it yourself
 > Docker images are published at [teatowel/media-bot](https://hub.docker.com/r/teatowel/media-bot)
@@ -20,3 +21,5 @@
 - Create an app on the [Discord developer portal](https://discord.com/developers)
 - In the installation tab, enable User Instal under the installation methods.
 - Pull Docker container and run. Make sure to set `DISCORD_TOKEN` in the environment to your bot token.
+- Note that commands can take some time to appear on Discord. You can set `GUILD_ID` to immediately add commands to a server for testing.
+- Check .env.example for more optional environment variables.
