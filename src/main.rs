@@ -1,4 +1,5 @@
 mod commands;
+mod image_provider;
 mod interact;
 mod process;
 mod util;
