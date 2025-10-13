@@ -28,7 +28,13 @@ pub fn register() -> CreateCommand {
                 .add_string_choice("dance", "dance")
                 .add_string_choice("nod", "nod")
                 .add_string_choice("pat", "pat")
-                .add_string_choice("kick", "kick"),
+                .add_string_choice("kick", "kick")
+                .add_string_choice("shoot", "shoot")
+                .add_string_choice("peck", "peck")
+                .add_string_choice("blush", "blush")
+                .add_string_choice("feed", "feed")
+                .add_string_choice("nom", "nom")
+                .add_string_choice("highfive", "highfive"),
         )
         .add_option(
             CreateCommandOption::new(CommandOptionType::User, "user", "user to harrass")
