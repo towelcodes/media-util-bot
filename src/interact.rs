@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use serenity::all::{
-    CommandInteraction, CommandOptionType, CreateCommand, CreateCommandOption, CreateEmbed,
-    CreateEmbedFooter, CreateInteractionResponse, CreateInteractionResponseFollowup,
+    CacheHttp, CommandInteraction, CommandOptionType, CreateCommand, CreateCommandOption,
+    CreateEmbed, CreateEmbedFooter, CreateInteractionResponse, CreateInteractionResponseFollowup,
     CreateInteractionResponseMessage, Http, InstallationContext, InteractionContext,
 };
 use tracing::warn;
@@ -42,14 +42,12 @@ pub fn register() -> CreateCommand {
         )
 }
 
-pub async fn run(cache_http: Arc<Http>, command: &CommandInteraction) -> CommandResult {
+pub async fn run(cache_http: impl CacheHttp, command: &CommandInteraction) -> CommandResult {
+    let http = cache_http.http();
     let action = command.data.options.get(0).unwrap().value.as_str().unwrap();
     let target = {
         if let Some(t) = command.data.options.get(1) {
-            let user = cache_http
-                .get_user(t.value.as_user_id().unwrap())
-                .await
-                .unwrap();
+            let user = http.get_user(t.value.as_user_id().unwrap()).await.unwrap();
             user.display_name().to_owned()
         } else {
             "".to_owned()

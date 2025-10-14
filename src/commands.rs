@@ -1,7 +1,7 @@
 use crate::process;
 use crate::util::{download_attachment, mark_processing};
 use serenity::all::{
-    CommandInteraction, CreateAttachment, CreateEmbed, CreateEmbedFooter,
+    CacheHttp, CommandInteraction, CreateAttachment, CreateEmbed, CreateEmbedFooter,
     CreateInteractionResponse, CreateInteractionResponseFollowup, Mentionable,
 };
 use serenity::builder::CreateInteractionResponseMessage;
@@ -10,7 +10,11 @@ use std::sync::Arc;
 
 pub type CommandResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
-pub async fn crush(cache_http: Arc<Http>, command: &CommandInteraction) -> CommandResult {
+pub trait CommandExecutor {
+    
+}
+
+pub async fn crush(cache_http: impl CacheHttp, command: &CommandInteraction) -> CommandResult {
     let file = download_attachment(command.data.options().get(0)).await?;
     mark_processing(&cache_http, &command).await;
     let arg = command
@@ -26,12 +30,12 @@ pub async fn crush(cache_http: Arc<Http>, command: &CommandInteraction) -> Comma
             process,
             command.user.mention()
         ));
-    command.create_followup(&cache_http, builder).await?;
-    let _ = command.delete_response(&cache_http).await;
+    command.create_followup(cache_http.http(), builder).await?;
+    let _ = command.delete_response(cache_http.http()).await;
     Ok(())
 }
 
-pub async fn compress(cache_http: Arc<Http>, command: &CommandInteraction) -> CommandResult {
+pub async fn compress(cache_http: impl CacheHttp, command: &CommandInteraction) -> CommandResult {
     let file = download_attachment(command.data.options().get(0)).await?;
     mark_processing(&cache_http, &command).await;
     let arg = command
@@ -48,11 +52,11 @@ pub async fn compress(cache_http: Arc<Http>, command: &CommandInteraction) -> Co
             command.user.mention()
         ));
     command.create_followup(&cache_http, builder).await?;
-    let _ = command.delete_response(&cache_http).await;
+    let _ = command.delete_response(cache_http.http()).await;
     Ok(())
 }
 
-pub async fn mask(cache_http: Arc<Http>, command: &CommandInteraction) -> CommandResult {
+pub async fn mask(cache_http: impl CacheHttp, command: &CommandInteraction) -> CommandResult {
     let file = download_attachment(command.data.options().get(0)).await?;
     let mask = download_attachment(command.data.options().get(1)).await?;
     mark_processing(&cache_http, &command).await;
@@ -64,14 +68,14 @@ pub async fn mask(cache_http: Arc<Http>, command: &CommandInteraction) -> Comman
             process,
             command.user.mention()
         ));
-    command.create_followup(&cache_http, builder).await?;
-    let _ = command.delete_response(&cache_http).await;
+    command.create_followup(&cache_http.http(), builder).await?;
+    let _ = command.delete_response(&cache_http.http()).await;
     Ok(())
 }
 
 #[allow(dead_code)]
 pub async fn mask_derived(
-    cache_http: Arc<Http>,
+    cache_http: impl CacheHttp,
     command: &CommandInteraction,
     mask: Vec<u8>,
     _name: &str,
@@ -87,11 +91,11 @@ pub async fn mask_derived(
             command.user.mention()
         ));
     command.create_followup(&cache_http, builder).await?;
-    let _ = command.delete_response(&cache_http).await;
+    let _ = command.delete_response(cache_http.http()).await;
     Ok(())
 }
 
-pub async fn ping(cache_http: Arc<Http>, command: &CommandInteraction) -> CommandResult {
+pub async fn ping(cache_http: impl CacheHttp, command: &CommandInteraction) -> CommandResult {
     let data = CreateInteractionResponseMessage::new().embed(
         CreateEmbed::new()
             .title("hey loser")
@@ -104,11 +108,11 @@ pub async fn ping(cache_http: Arc<Http>, command: &CommandInteraction) -> Comman
             ))),
     );
     let builder = CreateInteractionResponse::Message(data);
-    command.create_response(&cache_http, builder).await?;
+    command.create_response(cache_http.http(), builder).await?;
     Ok(())
 }
 
-pub async fn cake(cache_http: Arc<Http>, command: &CommandInteraction) -> CommandResult {
+pub async fn cake(cache_http: impl CacheHttp, command: &CommandInteraction) -> CommandResult {
     let data = CreateInteractionResponseMessage::new().embed(
         CreateEmbed::new()
             .title("jk")
@@ -116,6 +120,6 @@ pub async fn cake(cache_http: Arc<Http>, command: &CommandInteraction) -> Comman
             .colour(0xf9e2af),
     );
     let builder = CreateInteractionResponse::Message(data);
-    command.create_response(&cache_http, builder).await?;
+    command.create_response(cache_http.http(), builder).await?;
     Ok(())
 }
