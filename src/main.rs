@@ -6,8 +6,8 @@ mod util;
 
 use include_dir::{include_dir, Dir};
 use serenity::all::{
-    ClientBuilder, CommandOptionType, CreateCommand, GuildId, Http, HttpBuilder,
-    InstallationContext, Interaction, InteractionContext,
+    ClientBuilder, CommandDataOptionValue, CommandOptionType, CreateCommand, GuildId, Http,
+    HttpBuilder, InstallationContext, Interaction, InteractionContext,
 };
 use serenity::builder::{CreateCommandOption, CreateEmbed, CreateInteractionResponseFollowup};
 use serenity::model::application::Command;
@@ -20,9 +20,6 @@ use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
-
-#[allow(dead_code)]
-static ASSETS: Dir = include_dir!("src/assets");
 
 struct Handler;
 #[async_trait]
@@ -167,7 +164,33 @@ impl EventHandler for Handler {
             let command_result = match name {
                 "crush" => commands::crush(Arc::clone(&ctx.http), &command).await,
                 "compress" => commands::compress(Arc::clone(&ctx.http), &command).await,
-                "mask" => commands::mask(Arc::clone(&ctx.http), &command).await,
+                "mask" => {
+                    if let Some(opt) = command.data.options.get(0) {
+                        if let CommandDataOptionValue::SubCommand(_) = opt.value {
+                            match opt.name.as_str() {
+                                "custom" => commands::mask(Arc::clone(&ctx.http), &command).await,
+                                "speech_bubble" => {
+                                    commands::mask_derived(
+                                        Arc::clone(&ctx.http),
+                                        &command,
+                                        include_bytes!("assets/speech_bubble.png").into(),
+                                    )
+                                    .await
+                                }
+                                _ => {
+                                    error!("Unknown command: {}", name);
+                                    Ok(())
+                                }
+                            }
+                        } else {
+                            error!("No subcommand {:?}", opt);
+                            Ok(())
+                        }
+                    } else {
+                        error!("No arguments {:?}", command.data.options);
+                        Ok(())
+                    }
+                }
                 "ping" => commands::ping(Arc::clone(&ctx.http), &command).await,
                 "cake" => commands::cake(Arc::clone(&ctx.http), &command).await,
                 "interact" => interact::run(Arc::clone(&ctx.http), &command).await,
@@ -207,9 +230,7 @@ async fn main() {
         .init();
     let token = env::var("DISCORD_TOKEN").expect("DISCORD_TOKEN must be set");
 
-    let http = HttpBuilder::new(token)
-        .proxy("http://127.0.0.1:8080")
-        .build();
+    let http = HttpBuilder::new(token).build();
     let mut client = ClientBuilder::new_with_http(http, GatewayIntents::empty())
         .event_handler(Handler)
         .await

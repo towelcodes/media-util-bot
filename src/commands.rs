@@ -2,17 +2,17 @@ use crate::process;
 use crate::util::{download_attachment, mark_processing};
 use serenity::all::{
     CacheHttp, CommandInteraction, CreateAttachment, CreateEmbed, CreateEmbedFooter,
-    CreateInteractionResponse, CreateInteractionResponseFollowup, Mentionable,
+    CreateInteractionResponse, CreateInteractionResponseFollowup, Mentionable, ResolvedOption,
+    ResolvedValue,
 };
 use serenity::builder::CreateInteractionResponseMessage;
 use serenity::http::Http;
 use std::sync::Arc;
+use tracing::debug;
 
 pub type CommandResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
-pub trait CommandExecutor {
-    
-}
+pub trait CommandExecutor {}
 
 pub async fn crush(cache_http: impl CacheHttp, command: &CommandInteraction) -> CommandResult {
     let file = download_attachment(command.data.options().get(0)).await?;
@@ -57,41 +57,52 @@ pub async fn compress(cache_http: impl CacheHttp, command: &CommandInteraction) 
 }
 
 pub async fn mask(cache_http: impl CacheHttp, command: &CommandInteraction) -> CommandResult {
-    let file = download_attachment(command.data.options().get(0)).await?;
-    let mask = download_attachment(command.data.options().get(1)).await?;
-    mark_processing(&cache_http, &command).await;
-    let (image, process) = process::mask(file, mask)?;
-    let builder = CreateInteractionResponseFollowup::new()
-        .add_file(CreateAttachment::bytes(image, "output.png"))
-        .content(format!(
-            "-# applied `mask` ({}) | sent by {}",
-            process,
-            command.user.mention()
-        ));
-    command.create_followup(&cache_http.http(), builder).await?;
-    let _ = command.delete_response(&cache_http.http()).await;
+    if let Some(opt) = command.data.options().get(0) {
+        if let ResolvedValue::SubCommand(sub) = opt.value.clone() {
+            debug!("{:?}", sub);
+            let file = download_attachment(sub.get(0)).await?;
+            let mask = download_attachment(sub.get(1)).await?;
+            mark_processing(&cache_http, &command).await;
+            let (image, process) = process::mask(file, mask)?;
+            let builder = CreateInteractionResponseFollowup::new()
+                .add_file(CreateAttachment::bytes(image, "output.png"))
+                .content(format!(
+                    "-# applied `mask` ({}) | sent by {}",
+                    process,
+                    command.user.mention()
+                ));
+            command.create_followup(&cache_http.http(), builder).await?;
+            let _ = command.delete_response(&cache_http.http()).await;
+            ()
+        }
+    }
     Ok(())
 }
 
-#[allow(dead_code)]
 pub async fn mask_derived(
     cache_http: impl CacheHttp,
     command: &CommandInteraction,
     mask: Vec<u8>,
-    _name: &str,
 ) -> CommandResult {
-    let file = download_attachment(command.data.options().get(0)).await?;
-    mark_processing(&cache_http, &command).await;
-    let (image, process) = process::mask(file, mask)?;
-    let builder = CreateInteractionResponseFollowup::new()
-        .add_file(CreateAttachment::bytes(image, "output.png"))
-        .content(format!(
-            "-# applied `mask` ({}) | sent by {}",
-            process,
-            command.user.mention()
-        ));
-    command.create_followup(&cache_http, builder).await?;
-    let _ = command.delete_response(cache_http.http()).await;
+    if let Some(opt) = command.data.options().get(0) {
+        if let ResolvedValue::SubCommand(sub) = opt.value.clone() {
+            debug!("sub cmds {:?}", sub);
+            let file = download_attachment(sub.get(1).unwrap().value).await?;
+            debug!("file {:?}", file);
+            mark_processing(&cache_http, &command).await;
+            let (image, process) = process::mask(file, mask)?;
+            let builder = CreateInteractionResponseFollowup::new()
+                .add_file(CreateAttachment::bytes(image, "output.png"))
+                .content(format!(
+                    "-# applied `mask` ({}) | sent by {}",
+                    process,
+                    command.user.mention()
+                ));
+            command.create_followup(&cache_http, builder).await?;
+            let _ = command.delete_response(cache_http.http()).await;
+            ()
+        }
+    }
     Ok(())
 }
 
