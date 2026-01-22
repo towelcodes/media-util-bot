@@ -3,6 +3,7 @@ mod image_provider;
 mod interact;
 mod process;
 mod util;
+mod yuri;
 
 use include_dir::{include_dir, Dir};
 use serenity::all::{
@@ -28,6 +29,8 @@ impl EventHandler for Handler {
         info!("{} is connected!", ready.user.name);
 
         let commands = vec![
+            interact::register(),
+            yuri::register(),
             CreateCommand::new("ping")
                 .description("ping pong")
                 .integration_types(vec![InstallationContext::User])
@@ -36,7 +39,6 @@ impl EventHandler for Handler {
                     InteractionContext::Guild,
                     InteractionContext::BotDm,
                 ]),
-            interact::register(),
             CreateCommand::new("cake")
                 .description("i will bake you a cake !!!!")
                 .integration_types(vec![InstallationContext::User])
@@ -141,7 +143,6 @@ impl EventHandler for Handler {
                 ]),
         ];
         // For faster testing, register commands to a specific guild
-        // Replace GUILD_ID with your test server's ID, or set GUILD_ID environment variable
         if let Ok(guild_id_str) = env::var("GUILD_ID") {
             if let Ok(guild_id) = guild_id_str.parse::<u64>() {
                 let guild_id = GuildId::new(guild_id);
@@ -164,36 +165,11 @@ impl EventHandler for Handler {
             let command_result = match name {
                 "crush" => commands::crush(Arc::clone(&ctx.http), &command).await,
                 "compress" => commands::compress(Arc::clone(&ctx.http), &command).await,
-                "mask" => {
-                    if let Some(opt) = command.data.options.get(0) {
-                        if let CommandDataOptionValue::SubCommand(_) = opt.value {
-                            match opt.name.as_str() {
-                                "custom" => commands::mask(Arc::clone(&ctx.http), &command).await,
-                                "speech_bubble" => {
-                                    commands::mask_derived(
-                                        Arc::clone(&ctx.http),
-                                        &command,
-                                        include_bytes!("assets/speech_bubble.png").into(),
-                                    )
-                                    .await
-                                }
-                                _ => {
-                                    error!("Unknown command: {}", name);
-                                    Ok(())
-                                }
-                            }
-                        } else {
-                            error!("No subcommand {:?}", opt);
-                            Ok(())
-                        }
-                    } else {
-                        error!("No arguments {:?}", command.data.options);
-                        Ok(())
-                    }
-                }
+                "mask" => commands::mask(Arc::clone(&ctx.http), &command).await,
                 "ping" => commands::ping(Arc::clone(&ctx.http), &command).await,
                 "cake" => commands::cake(Arc::clone(&ctx.http), &command).await,
                 "interact" => interact::run(Arc::clone(&ctx.http), &command).await,
+                "yuri" => yuri::run(Arc::clone(&ctx.http), &command).await,
                 _ => {
                     error!("Unknown command: {}", name);
                     Ok(())
