@@ -30,7 +30,8 @@ impl EventHandler for Handler {
 
         let commands = vec![
             interact::register(),
-            yuri::register(),
+            yuri::register_yuri(),
+            yuri::register_yaoi(),
             CreateCommand::new("ping")
                 .description("ping pong")
                 .integration_types(vec![InstallationContext::User])
@@ -169,7 +170,22 @@ impl EventHandler for Handler {
                 "ping" => commands::ping(Arc::clone(&ctx.http), &command).await,
                 "cake" => commands::cake(Arc::clone(&ctx.http), &command).await,
                 "interact" => interact::run(Arc::clone(&ctx.http), &command).await,
-                "yuri" => yuri::run(Arc::clone(&ctx.http), &command).await,
+                "yuri" => {
+                    yuri::run(
+                        Arc::clone(&ctx.http),
+                        &command,
+                        "yuri rating:general sort:random",
+                    )
+                    .await
+                }
+                "yaoi" => {
+                    yuri::run(
+                        Arc::clone(&ctx.http),
+                        &command,
+                        "yaoi rating:general sort:random",
+                    )
+                    .await
+                }
                 _ => {
                     error!("Unknown command: {}", name);
                     Ok(())

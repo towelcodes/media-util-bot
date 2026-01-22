@@ -11,7 +11,7 @@ use crate::image_provider::safebooru;
 
 pub type CommandResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
-pub fn register() -> CreateCommand {
+pub fn register_yuri() -> CreateCommand {
     CreateCommand::new("yuri")
         .description("guess")
         .integration_types(vec![InstallationContext::User, InstallationContext::Guild])
@@ -22,8 +22,23 @@ pub fn register() -> CreateCommand {
         ])
 }
 
-pub async fn run(cache_http: impl CacheHttp, command: &CommandInteraction) -> CommandResult {
-    let image = safebooru("yuri rating:general sort:random").await;
+pub fn register_yaoi() -> CreateCommand {
+    CreateCommand::new("yaoi")
+        .description("guess")
+        .integration_types(vec![InstallationContext::User, InstallationContext::Guild])
+        .contexts(vec![
+            InteractionContext::PrivateChannel,
+            InteractionContext::Guild,
+            InteractionContext::BotDm,
+        ])
+}
+
+pub async fn run(
+    cache_http: impl CacheHttp,
+    command: &CommandInteraction,
+    query: &str,
+) -> CommandResult {
+    let image = safebooru(query).await;
 
     if image.is_err() {
         let err = image.unwrap_err();
