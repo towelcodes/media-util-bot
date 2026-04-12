@@ -1,6 +1,5 @@
 mod commands;
 mod image_provider;
-mod interact;
 mod process;
 mod util;
 mod yuri;
@@ -29,7 +28,7 @@ impl EventHandler for Handler {
         info!("{} is connected!", ready.user.name);
 
         let commands = vec![
-            interact::register(),
+            commands::interact::register(),
             yuri::register_yuri(),
             yuri::register_yaoi(),
             CreateCommand::new("ping")
@@ -164,12 +163,12 @@ impl EventHandler for Handler {
         if let Interaction::Command(command) = interaction {
             let name = command.data.name.as_str();
             let command_result = match name {
-                "crush" => commands::crush(Arc::clone(&ctx.http), &command).await,
-                "compress" => commands::compress(Arc::clone(&ctx.http), &command).await,
-                "mask" => commands::mask(Arc::clone(&ctx.http), &command).await,
-                "ping" => commands::ping(Arc::clone(&ctx.http), &command).await,
-                "cake" => commands::cake(Arc::clone(&ctx.http), &command).await,
-                "interact" => interact::run(Arc::clone(&ctx.http), &command).await,
+                "crush" => commands::crush::run(Arc::clone(&ctx.http), &command).await,
+                "compress" => commands::compress::run(Arc::clone(&ctx.http), &command).await,
+                "mask" => commands::mask::run(Arc::clone(&ctx.http), &command).await,
+                "ping" => commands::ping::run(Arc::clone(&ctx.http), &command).await,
+                "cake" => commands::cake::run(Arc::clone(&ctx.http), &command).await,
+                "interact" => commands::interact::run(Arc::clone(&ctx.http), &command).await,
                 "yuri" => {
                     yuri::run(
                         Arc::clone(&ctx.http),
