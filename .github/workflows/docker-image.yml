@@ -8,21 +8,76 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
     steps:
     - uses: actions/checkout@v4
+    - name: Prepare platform slug
+      id: vars
+      run: |
+        echo "platform_slug=$(echo '${{ matrix.platform }}' | tr '/' '-')" >> "$GITHUB_OUTPUT"
     - name: Login to Docker Hub
       uses: docker/login-action@v3
       with:
         username: ${{ vars.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-    - name: Build and push
+    - name: Build and push by digest
+      id: build
       uses: docker/build-push-action@v6
       with:
-        platforms: linux/amd64,linux/arm64
-        push: true
-        tags: teatowel/media-bot:latest
+        platforms: ${{ matrix.platform }}
+        outputs: type=image,name=teatowel/media-bot,push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
+        cache-from: type=gha,scope=${{ matrix.platform }}
+        cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+    - name: Export digest
+      if: github.event_name != 'pull_request'
+      run: |
+        mkdir -p /tmp/digests
+        digest="${{ steps.build.outputs.digest }}"
+        touch "/tmp/digests/${digest#sha256:}"
+    - name: Upload digest
+      if: github.event_name != 'pull_request'
+      uses: actions/upload-artifact@v4
+      with:
+        name: digests-${{ steps.vars.outputs.platform_slug }}
+        path: /tmp/digests/*
+        if-no-files-found: error
+        retention-days: 1
+
+  merge:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    permissions: {}
+    needs:
+      - build
+    steps:
+    - name: Download digests
+      uses: actions/download-artifact@v4
+      with:
+        path: /tmp/digests
+        pattern: digests-*
+        merge-multiple: true
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ vars.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Create manifest list and push
+      working-directory: /tmp/digests
+      run: |
+        docker buildx imagetools create \
+          -t teatowel/media-bot:latest \
+          $(printf 'teatowel/media-bot@sha256:%s ' *)
