@@ -1,15 +1,11 @@
-use std::sync::Arc;
-
+use crate::commands::CommandResult;
+use crate::image_provider::nekos_best;
 use serenity::all::{
     CacheHttp, CommandInteraction, CommandOptionType, CreateCommand, CreateCommandOption,
     CreateEmbed, CreateEmbedFooter, CreateInteractionResponse, CreateInteractionResponseFollowup,
     CreateInteractionResponseMessage, Http, InstallationContext, InteractionContext,
 };
 use tracing::warn;
-
-use crate::image_provider::nekos_best;
-
-pub type CommandResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
 pub fn register() -> CreateCommand {
     CreateCommand::new("interact")

@@ -29,6 +29,7 @@ impl EventHandler for Handler {
 
         let commands = vec![
             commands::interact::register(),
+            commands::request::register(),
             yuri::register_yuri(),
             yuri::register_yaoi(),
             CreateCommand::new("ping")
@@ -169,6 +170,9 @@ impl EventHandler for Handler {
                 "ping" => commands::ping::run(Arc::clone(&ctx.http), &command).await,
                 "cake" => commands::cake::run(Arc::clone(&ctx.http), &command).await,
                 "interact" => commands::interact::run(Arc::clone(&ctx.http), &command).await,
+                "request_feature" => {
+                    commands::request::run(&ctx, Arc::clone(&ctx.http), &command).await
+                }
                 "yuri" => {
                     yuri::run(
                         Arc::clone(&ctx.http),
