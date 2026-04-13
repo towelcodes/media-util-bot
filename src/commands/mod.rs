@@ -1,5 +1,6 @@
 use serenity::all::{CacheHttp, CommandInteraction};
 
+pub mod ai;
 pub mod cake;
 pub mod compress;
 pub mod crush;

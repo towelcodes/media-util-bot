@@ -4,7 +4,9 @@ mod process;
 mod util;
 mod yuri;
 
+use image::imageops::FilterType::Lanczos3;
 use include_dir::{include_dir, Dir};
+use openrouter_rs::OpenRouterClient;
 use serenity::all::{
     ClientBuilder, CommandDataOptionValue, CommandOptionType, CreateCommand, GuildId, Http,
     HttpBuilder, InstallationContext, Interaction, InteractionContext,
@@ -21,6 +23,16 @@ use tracing::{debug, error, info, warn};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
+struct DatabasePool;
+impl TypeMapKey for DatabasePool {
+    type Value = database::DbPool;
+}
+
+struct AiClient;
+impl TypeMapKey for AiClient {
+    type Value = Arc<RwLock<OpenRouterClient>>;
+}
+
 struct Handler;
 #[async_trait]
 impl EventHandler for Handler {
@@ -30,6 +42,7 @@ impl EventHandler for Handler {
         let commands = vec![
             commands::interact::register(),
             commands::request::register(),
+            commands::ai::register(),
             yuri::register_yuri(),
             yuri::register_yaoi(),
             CreateCommand::new("ping")
@@ -164,6 +177,7 @@ impl EventHandler for Handler {
         if let Interaction::Command(command) = interaction {
             let name = command.data.name.as_str();
             let command_result = match name {
+                "ai" => commands::ai::run(&ctx, &command).await,
                 "crush" => commands::crush::run(Arc::clone(&ctx.http), &command).await,
                 "compress" => commands::compress::run(Arc::clone(&ctx.http), &command).await,
                 "mask" => commands::mask::run(Arc::clone(&ctx.http), &command).await,
@@ -225,11 +239,28 @@ async fn main() {
         .init();
     let token = env::var("DISCORD_TOKEN").expect("DISCORD_TOKEN must be set");
 
+    // setup database
+    let db = database::establish_connection_pool();
+
+    // setup ai features
+    let or_client = OpenRouterClient::builder()
+        .api_key(env::var("OPENROUTER_KEY").expect("OPENROUTER_API_KEY must be set"))
+        .x_title("discordbot")
+        .build()
+        .expect("openrouter client failed to build");
+
     let http = HttpBuilder::new(token).build();
     let mut client = ClientBuilder::new_with_http(http, GatewayIntents::empty())
         .event_handler(Handler)
         .await
         .expect("Client creation failed.");
+
+    // insert data
+    {
+        let mut data = client.data.write().await;
+        data.insert::<AiClient>(Arc::new(RwLock::new(or_client)));
+        data.insert::<DatabasePool>(db);
+    }
 
     if let Err(why) = client.start().await {
         error!("client error: {why:?}");
