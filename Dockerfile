@@ -1,9 +1,10 @@
-FROM lukemathwalker/cargo-chef:latest as chef
+FROM lukemathwalker/cargo-chef:latest AS chef
 WORKDIR /app
 
 FROM chef AS planner
 COPY ./Cargo.toml ./Cargo.lock ./
 COPY ./src ./src
+COPY ./database ./database
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
