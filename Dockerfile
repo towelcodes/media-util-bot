@@ -16,5 +16,9 @@ RUN cargo build --release --bin media-bot
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 COPY --from=builder /app/target/release/media-bot /usr/local/bin
-RUN apt-get update && apt install -y openssl && apt install ca-certificates
+RUN apt-get update && apt-get install -y \
+    openssl \
+    ca-certificates \
+    libcurl4 \
+    && rm -rf /var/lib/apt/lists/*
 ENTRYPOINT ["/usr/local/bin/media-bot"]
