@@ -21,6 +21,11 @@ pub fn establish_connection_pool() -> DbPool {
     let database_url = env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set in .env or environment variables");
 
+    // Create database if it doesn't exist
+    if !database_exists(&database_url) {
+        create_database(&database_url).expect("Failed to create database");
+    }
+
     let manager = ConnectionManager::<MysqlConnection>::new(database_url);
 
     let pool = r2d2::Pool::builder()
@@ -43,6 +48,25 @@ fn run_migrations(
     connection: &mut MysqlConnection,
 ) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     connection.run_pending_migrations(MIGRATIONS)?;
+
+    Ok(())
+}
+
+// Helper functions to create the database if it doesn't exist.
+// This is a common pattern for Diesel applications.
+fn database_exists(database_url: &str) -> bool {
+    MysqlConnection::establish(database_url).is_ok()
+}
+
+fn create_database(database_url: &str) -> Result<(), Box<dyn Error>> {
+    let (db_name, url_without_db) = {
+        let mut url_parts: Vec<&str> = database_url.split('/').collect();
+        let db_name = url_parts.pop().unwrap_or("");
+        (db_name.to_string(), url_parts.join("/"))
+    };
+
+    let mut conn = MysqlConnection::establish(&url_without_db)?;
+    diesel::sql_query(format!("CREATE DATABASE IF NOT EXISTS {}", db_name)).execute(&mut conn)?;
 
     Ok(())
 }
