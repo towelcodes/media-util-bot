@@ -20,5 +20,6 @@ RUN apt-get update && apt-get install -y \
     openssl \
     ca-certificates \
     libcurl4 \
+    libmariadb3 \
     && rm -rf /var/lib/apt/lists/*
 ENTRYPOINT ["/usr/local/bin/media-bot"]
