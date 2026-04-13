@@ -14,6 +14,7 @@
 | /compress \<file> [quality] | apply JPEG compression to any image (loses alpha channel) |
 | /mask \<image> \<mask> | applies the luma of the mask to each pixel of the image   |
 | /interact <action> [user] | finds a gif for an interaction from nekos.best |
+| /ai ask <prompt> | ask a configurable AI model a question |
 
 ## Run it yourself
 > Docker images are published at [teatowel/media-bot](https://hub.docker.com/r/teatowel/media-bot)
