@@ -97,7 +97,7 @@ pub fn get_context(conn: &mut MysqlConnection, uid: u64) -> LlmContext {
     let now = chrono::Utc::now().naive_utc();
     if now.signed_duration_since(result.last_updated).num_hours() >= 1 {
         diesel::update(llm_context::table.find(uid))
-            .set(llm_context::context.eq(""))
+            .set(llm_context::context.eq("[]"))
             .execute(conn)
             .expect("Failed to update context");
 

@@ -53,8 +53,7 @@ async fn ask(
 
     // set model
     let model = env::var("OPENROUTER_MODEL").unwrap_or("x-ai/grok-4.1-fast".to_owned());
-    let system_prompt =
-        env::var("LLM_SYSTEM_PROMPT").unwrap_or("You are a helpful assistant.".to_owned());
+    let system_prompt = env::var("LLM_PROMPT").unwrap_or("You are a helpful assistant.".to_owned());
 
     // retrive context
     let db_context = {
@@ -81,8 +80,8 @@ async fn ask(
     let mut messages = vec![Message::new(
         Role::System,
         format!(
-            "{} The user sending the message has the display name '{name}'. You are running the LLM model '{}'.",
-            system_prompt, model
+            "{} The user sending the message has the display name '{}'. You are running the LLM model '{}'.",
+            system_prompt, name, model
         ),
     )];
 
@@ -151,11 +150,22 @@ async fn ask(
 }
 
 async fn clear_history(ctx: &Context, command: &CommandInteraction) -> CommandResult {
+    {
+        let data_read = ctx.data.read().await;
+        let pool = data_read
+            .get::<DatabasePool>()
+            .expect("Expected database pool to be available")
+            .clone();
+        let mut connection = pool
+            .get()
+            .expect("Expected database pool to have a available connection");
+        database::update_context(&mut connection, command.user.id.into(), "[]".to_owned());
+    };
     command
         .create_response(
             &ctx.http(),
             CreateInteractionResponse::Message(
-                CreateInteractionResponseMessage::new().content("nuh uh"),
+                CreateInteractionResponseMessage::new().content("okay, i forgot everything."),
             ),
         )
         .await?;
